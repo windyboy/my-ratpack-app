@@ -1,6 +1,7 @@
 package me.windy.ratpack.book
 
 import groovy.json.JsonSlurper
+
 import groovy.sql.GroovyRowResult
 import groovy.util.logging.Slf4j
 import rx.Observable
@@ -22,5 +23,24 @@ class BookService {
         bookDbCmd.getAll().map{
           new Book(bookId: it.book_id, bookTitle: it.book_title, bookDate: it.book_date, isbn: it.isbn)
         }
+  }
+
+  Observable<Book> findById(Long bookId) {
+    bookDbCmd.findById(bookId).map{
+      it == null ? it:new Book(bookId: it.book_id, bookTitle: it.book_title, bookDate: it.book_date, isbn: it.isbn)
     }
+  }
+
+  Observable<Book> findByIsbn(String isbn) {
+    bookDbCmd.findByIsbn(isbn).map{
+      new Book(bookId: it.book_id, bookTitle: it.book_title, bookDate: it.book_date, isbn: isbn)
+    }
+  }
+
+  Observable<Integer> insert(Book book) {
+    bookDbCmd.insert(book).map{
+    // println "********************  $it"
+      it[0][0]
+    }
+  }
 }

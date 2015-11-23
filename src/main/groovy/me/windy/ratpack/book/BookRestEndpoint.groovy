@@ -3,13 +3,16 @@ package me.windy.ratpack.book
 import ratpack.groovy.handling.GroovyChainAction
 
 import javax.inject.Inject
-
+import groovy.json.JsonOutput
 import static ratpack.jackson.Jackson.json
 import static ratpack.jackson.Jackson.jsonNode
 import static ratpack.rx.RxRatpack.observe
+import java.text.SimpleDateFormat
+import java.text.DateFormat
 
 class BookRestEndpoint extends GroovyChainAction {
   private final BookService bookService
+  private final DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 
     @Inject
     BookRestEndpoint(BookService bookService) {
@@ -18,16 +21,48 @@ class BookRestEndpoint extends GroovyChainAction {
 
     @Override
     void execute() throws Exception {
+      get(":id") {
+        def bookId = pathTokens["id"]
+        bookService.findById(Long.parseLong(bookId)).
+        single().
+        subscribe {Book book ->
+          if (book == null) {
+              clientError 404
+          } else {
+              render book
+          }
+        }
+      }
+
       all {
           byMethod {
-              get {
-                  bookService.getAll().
-                      toList().
-                      subscribe { List<Book> books ->
-                          render json(books)
-                      }
+            get {
+              bookService.getAll().
+              toList().
+              subscribe { List<Book> books ->
+                render json(books)
               }
-          }
+            }
+
+            post {
+              parse(jsonNode()).
+              observe().
+              flatMap { input ->
+                bookService.insert(new Book(
+                  bookTitle:input.get("bookTitle").asText(),
+                  bookDate: df.parse(input.get("bookDate").asText()),
+                  isbn:input.get("isbn").asText()))
+              }.
+              single().
+              flatMap {
+                  bookService.findById(it)
+              }.
+              single().
+              subscribe { Book createdBook ->
+                  render createdBook
+              }
+            }
+        }
       }
     }
 }

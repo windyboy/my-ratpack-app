@@ -62,18 +62,18 @@ ratpack {
     }
 
     prefix("admin") {
+        get("health-check/:name?", new HealthCheckHandler())
+        get("metrics-report", new MetricsWebsocketBroadcastHandler())
 
-            get("health-check/:name?", new HealthCheckHandler())
-            get("metrics-report", new MetricsWebsocketBroadcastHandler())
-
-            get("metrics") {
-                render groovyMarkupTemplate("metrics.gtpl", title: "Metrics")
-            }
+        get("metrics") {
+            render groovyMarkupTemplate("metrics.gtpl", title: "Metrics")
         }
+    }
 
-        get("hystrix.stream", new HystrixMetricsEventStreamHandler())
+
+    get("hystrix.stream", new HystrixMetricsEventStreamHandler())
     prefix("api/book") {
-            all chain(registry.get(BookRestEndpoint))
+      all chain(registry.get(BookRestEndpoint))
     }
 
     files { dir "public" }
