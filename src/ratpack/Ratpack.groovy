@@ -1,5 +1,10 @@
 import me.windy.ratpack.book.*
 import ratpack.groovy.template.MarkupTemplateModule
+import org.pac4j.http.client.FormClient
+import org.pac4j.http.credentials.SimpleTestUsernamePasswordAuthenticator
+import org.pac4j.http.profile.UsernameProfileCreator
+import ratpack.pac4j.RatpackPac4j
+import ratpack.session.SessionModule
 import com.zaxxer.hikari.HikariConfig
 import ratpack.hikari.HikariModule
 import ratpack.hystrix.HystrixModule
@@ -40,6 +45,7 @@ ratpack {
     // module HikariModule
     module SqlModule
     module BookModule
+    module SessionModule
     module new HystrixModule().sse()
     moduleConfig(DropwizardMetricsModule, configData.get("/metrics", DropwizardMetricsConfig))
     bind DatabaseHealthCheck
@@ -61,19 +67,47 @@ ratpack {
       render groovyMarkupTemplate("index.gtpl", title: "My Ratpack App")
     }
 
+
+
+
+    get("hystrix.stream", new HystrixMetricsEventStreamHandler())
+    prefix("api/book") {
+      all chain(registry.get(BookRestEndpoint))
+    }
+
+    def formClient = new FormClient()
+    formClient.setLoginUrl("/login")
+    formClient.setProfileCreator(new UsernameProfileCreator())
+    formClient.setAuthenticator(new SimpleTestUsernamePasswordAuthenticator())
+
+    def pac4jCallbackPath = "pac4j-callback"
+    all (RatpackPac4j.authenticator(
+        pac4jCallbackPath,
+        formClient))
+
+    get("login") { ctx ->
+      render groovyMarkupTemplate("login.gtpl",
+        title: "Login",
+        action: "/$pac4jCallbackPath",
+        method: 'get',
+        buttonText: 'Login',
+        error: request.queryParams.error ?: "")
+    }
+
+    get("logout") { ctx ->
+        RatpackPac4j.logout(ctx).then {
+            redirect("/")
+        }
+    }
+
     prefix("admin") {
+        all(RatpackPac4j.requireAuth(FormClient.class))
         get("health-check/:name?", new HealthCheckHandler())
         get("metrics-report", new MetricsWebsocketBroadcastHandler())
 
         get("metrics") {
             render groovyMarkupTemplate("metrics.gtpl", title: "Metrics")
         }
-    }
-
-
-    get("hystrix.stream", new HystrixMetricsEventStreamHandler())
-    prefix("api/book") {
-      all chain(registry.get(BookRestEndpoint))
     }
 
     files { dir "public" }
