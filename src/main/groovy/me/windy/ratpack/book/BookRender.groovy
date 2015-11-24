@@ -6,7 +6,7 @@ import ratpack.jackson.Jackson
 
 import static ratpack.groovy.Groovy.markupBuilder
 
-class BookRenderer extends GroovyRendererSupport<Book> {
+class BookRender extends GroovyRendererSupport<Book> {
 
     @Override
     void render(GroovyContext context, Book book) throws Exception {
