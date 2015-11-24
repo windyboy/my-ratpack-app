@@ -6,6 +6,7 @@ import javax.inject.Inject
 import groovy.json.JsonOutput
 import static ratpack.jackson.Jackson.json
 import static ratpack.jackson.Jackson.jsonNode
+import static ratpack.jackson.Jackson.fromJson
 import static ratpack.rx.RxRatpack.observe
 import java.text.SimpleDateFormat
 import java.text.DateFormat
@@ -45,21 +46,18 @@ class BookRestEndpoint extends GroovyChainAction {
             }
 
             post {
-              parse(jsonNode()).
+              parse(fromJson(Book.class)).
               observe().
               flatMap { input ->
-                bookService.insert(new Book(
-                  bookTitle:input.get("bookTitle").asText(),
-                  bookDate: df.parse(input.get("bookDate").asText()),
-                  isbn:input.get("isbn").asText()))
+                bookService.insert(input)
               }.
               single().
               flatMap {
                   bookService.findById(it)
               }.
               single().
-              subscribe { Book createdBook ->
-                  render createdBook
+              subscribe { book ->
+                  render "$book.bookId"
               }
             }
         }

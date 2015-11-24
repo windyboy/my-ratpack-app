@@ -39,7 +39,6 @@ class BookService {
 
   Observable<Integer> insert(Book book) {
     bookDbCmd.insert(book).map{
-    // println "********************  $it"
       it[0][0]
     }
   }
